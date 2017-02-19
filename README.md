@@ -41,3 +41,6 @@ information in real-time.
 
 ## Color theory and music
 [Link](http://hephaestusaudio.com/delphi/2008/12/29/color-theory-and-music/)
+
+## Chromatic Scale
+[Link](https://en.wikipedia.org/wiki/Chromatic_scale)
