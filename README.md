@@ -38,3 +38,6 @@ information in real-time.
 
 ## Real Time Musical Visualization
 [Link](https://vlebb.leeds.ac.uk/bbcswebdav/orgs/SCH_Computing/FYProj/reports/1213/Economides.pdf)
+
+## Color theory and music
+[Link](http://hephaestusaudio.com/delphi/2008/12/29/color-theory-and-music/)
