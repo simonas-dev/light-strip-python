@@ -44,3 +44,6 @@ information in real-time.
 
 ## Chromatic Scale
 [Link](https://en.wikipedia.org/wiki/Chromatic_scale)
+
+## Chromesthesia
+[Link](https://en.wikipedia.org/wiki/Chromesthesia)
