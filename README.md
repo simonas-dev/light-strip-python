@@ -10,6 +10,8 @@ Swift based open-source audio synthesis, processing, & analysis platform.
 
 [Link](https://github.com/audiokit/AudioKit)
 
+## A library for audio labeling: pitch, onset, tempo tracking
+[Link](https://github.com/aubio/aubio)
 ## RPi LED strip tool
 Enabled frequencies from music to be displayed in columns via Raspberry Pi and LPD8806 or WS2801 LED chipset
 
