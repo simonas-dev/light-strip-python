@@ -22,7 +22,7 @@ LED_BRIGHTNESS = 100     # Set to 0 for darkest and 255 for brightest
 LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 
 # constants
-samplerate = 44100
+samplerate = 16000
 win_s = 1024
 hop_s = win_s // 2
 framesize = hop_s
@@ -35,7 +35,7 @@ audio_in.setformat(alsaaudio.PCM_FORMAT_FLOAT_LE)
 audio_in.setchannels(1)
 print "Audio Input ready"
 
-# Open the device in playback mode. 
+# Open the device in playback mode.
 audio_out = alsaaudio.PCM(alsaaudio.PCM_PLAYBACK, device='plughw:CARD=Set,DEV=0')
 audio_out.setperiodsize(framesize)
 audio_out.setrate(samplerate)
@@ -54,7 +54,7 @@ pitch_o = pitch("default", win_s, hop_s, samplerate)
 pitch_o.set_unit("Hz")
 pitch_o.set_tolerance(tolerance)
 
-# Mel-Energy 
+# Mel-Energy
 f = filterbank(40, win_s)
 pv = pvoc(win_s, hop_s)
 f.set_mel_coeffs_slaney(samplerate)
@@ -81,34 +81,35 @@ def get_color(hex):
 def mix_colors(color_1, color_2, ratio):
     hex_1 = '0x{:06x}'.format(color_1)
     hex_2 = '0x{:06x}'.format(color_2)
-    
-    inv_ratio = (1-ratio)
-    
-    red = int((int("0x"+hex_1[2:4], 16) * inv_ratio) + ( int("0x"+hex_2[2:4], 16) * ratio))
-    green = int((int("0x"+hex_1[4:6], 16) * inv_ratio) + ( int("0x"+hex_2[4:6], 16) * ratio))
-    blue = int((int("0x"+hex_1[6:8], 16) * inv_ratio) + (int("0x"+hex_2[6:8], 16) * ratio))
 
-    return Color(red, green, blue)   
+    red = int(int("0x"+hex_1[2:4], 16) * (1-ratio) + int("0x"+hex_2[2:4], 16) * ratio)
+    green = int(int("0x"+hex_1[4:6], 16) * (1-ratio) + int("0x"+hex_2[4:6], 16) * ratio)
+    blue = int(int("0x"+hex_1[6:8], 16) * (1-ratio) + int("0x"+hex_2[6:8], 16) * ratio)
+
+    return Color(red, green, blue)
 
 def send_to_leds(_samples):
     if len(_samples) > 0:
         fftgrain = pv(_samples)
         new_energies = f(fftgrain)
         pitch_val = get_pitch(_samples)
-    
+
         note_index = get_note_index(pitch_val)
         note_hex = colors[note_index]
         note_color = get_color(note_hex)
 
         for index in range(144):
             energy_index = int(index/3.6)
-            energy = round(new_energies[energy_index], 4)
+            energy = round(new_energies[energy_index], 12)
             if energy > 1:
                 energy = 1
+            # energy = math.pow(energy, 4)
             cur_color = strip.getPixelColor(index)
-            color_mix = mix_colors(cur_color, note_color, energy)
-            strip.setPixelColor(index, mix_colors(color_mix, 0, 0.05))
-            
+            print cur_color
+            color_mix = mix_colors(cur_color, note_color, 1-energy)
+            black_mix = mix_colors(color_mix, int(0x000000), 0.01)
+            strip.setPixelColor(index, black_mix)
+
         print note_color
         strip.show()
 
@@ -116,7 +117,7 @@ class LedOutTask(threading.Thread):
     def __init__(self, samples):
         threading.Thread.__init__(self)
         self.samples = samples
-    
+
     def run(self):
         send_to_leds(self.samples)
 
@@ -125,7 +126,7 @@ class AudioOutTask(threading.Thread):
         threading.Thread.__init__(self)
         self.data = data
     def run(self):
-        audio_out.write(self.data)    
+        audio_out.write(self.data)
 
 # Main program logic follows:
 if __name__ == '__main__':
@@ -146,12 +147,12 @@ if __name__ == '__main__':
             _, data = audio_in.read()
             # convert data to aubio float samples
             samples = np.fromstring(data, dtype=float_type)
-            
+
             led_out_bg = LedOutTask(samples)
+            led_out_bg.daemon = True
             led_out_bg.start()
 
-            audio_out_bg = AudioOutTask(data)
-            audio_out_bg.start()
+            audio_out.write(data)
         except KeyboardInterrupt:
             print("Ctrl+C pressed, exiting")
-            break
+            brea
