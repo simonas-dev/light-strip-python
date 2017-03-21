@@ -11,7 +11,38 @@ A4 = 440
 C0 = A4*np.power(2, -4.75)
 name = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
-colors = ["FF0000", "FF0000","FFFF00","FFFF00","C3F2FF","7F8BFD","7F8BFD","F37900","F37900","33CC33","33CC33","8EC9FF"]
+# Original
+colors = [
+        "FF0000", # red
+        "FF0000", # red
+        "FFFF00", # yellow
+        "FFFF00", # yellow
+        "C3F2FF", # light cyan
+        "7F8BFD", # light blue
+        "7F8BFD", # light blue
+        "F37900", # orange
+        "F37900", # orange 
+        "33CC33", # green
+        "33CC33", # green
+        "8EC9FF"  # light blue
+]
+
+# Daft Punk
+# colors = [
+#         "8e2a8b", # red
+#         "8e2a8b", # red
+#         "fde74e", # yellow
+#         "fde74e", # yellow
+#         "86d3f1", # light cyan
+#         "86d3f1", # light blue
+#         "86d3f1", # light blue
+#         "ef58a0", # orange
+#         "ef58a0", # orange 
+#         "97bd4c", # green
+#         "97bd4c", # green
+#         "86d3f1"  # light blue
+# ]
+
 
 # LED strip configuration:
 LED_COUNT      = 144      # Number of LED pixels.
@@ -79,14 +110,27 @@ def get_color(hex):
     return Color(red, green, blue)
 
 def mix_colors(color_1, color_2, ratio):
-    hex_1 = '0x{:06x}'.format(color_1)
-    hex_2 = '0x{:06x}'.format(color_2)
+    if color_1 <= 0:
+        hex_1 = "0x000000"
+    else:
+        hex_1 = '0x{:06x}'.format(color_1)
+    
+    if color_2 <= 0:
+        hex_2 = "0x000000"
+    else:
+        hex_2 = '0x{:06x}'.format(color_2)
 
-    red = int(int("0x"+hex_1[2:4], 16) * (1-ratio) + int("0x"+hex_2[2:4], 16) * ratio)
-    green = int(int("0x"+hex_1[4:6], 16) * (1-ratio) + int("0x"+hex_2[4:6], 16) * ratio)
-    blue = int(int("0x"+hex_1[6:8], 16) * (1-ratio) + int("0x"+hex_2[6:8], 16) * ratio)
+    red = int((int("0x"+hex_1[2:4], 16) * (1-ratio)) + (int("0x"+hex_2[2:4], 16) * ratio))
+    green = int((int("0x"+hex_1[4:6], 16) * (1-ratio)) + (int("0x"+hex_2[4:6], 16) * ratio))
+    blue = int((int("0x"+hex_1[6:8], 16) * (1-ratio)) + (int("0x"+hex_2[6:8], 16) * ratio))
 
     return Color(red, green, blue)
+
+param_max_level = 0.8 # maximum energy 
+param_highlight_power = 2 # filter only high energy beats.
+param_energy_multiply = 30 # multiply energy values by.
+param_mix_power = 4 # for color mixing
+param_fade = 0.05 # 5% black every tick.
 
 def send_to_leds(_samples):
     if len(_samples) > 0:
@@ -100,17 +144,23 @@ def send_to_leds(_samples):
 
         for index in range(144):
             energy_index = int(index/3.6)
-            energy = round(new_energies[energy_index], 12)
-            if energy > 1:
-                energy = 1
-            # energy = math.pow(energy, 4)
+            energy_ratio = index % 1
+            if energy_ratio == 0:
+                energy = new_energies[energy_index]
+            else: 
+                energy = new_energies[energy_index] * (1-energy_ratio) + new_energies[energy_index+1] * (energy_ratio)
+            energy = round(energy, 6)
+            energy = pow(energy, param_highlight_power)
+            energy = energy*param_energy_multiply
+            energy = pow(energy, param_mix_power)
+            if energy > param_max_level:
+                energy = param_max_level
+            
             cur_color = strip.getPixelColor(index)
-            print cur_color
-            color_mix = mix_colors(cur_color, note_color, 1-energy)
-            black_mix = mix_colors(color_mix, int(0x000000), 0.01)
+            color_mix = mix_colors(cur_color, note_color, energy)
+            black_mix = mix_colors(color_mix, 0, param_fade)
             strip.setPixelColor(index, black_mix)
 
-        print note_color
         strip.show()
 
 class LedOutTask(threading.Thread):
@@ -121,38 +171,29 @@ class LedOutTask(threading.Thread):
     def run(self):
         send_to_leds(self.samples)
 
-class AudioOutTask(threading.Thread):
-    def __init__(self, data):
-        threading.Thread.__init__(self)
-        self.data = data
-    def run(self):
-        audio_out.write(self.data)
+# Create NeoPixel object with appropriate configuration.
+strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
 
 # Main program logic follows:
 if __name__ == '__main__':
     print("Starting to listen, press Ctrl+C to stop")
-
-    # Create NeoPixel object with appropriate configuration.
-    strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
+   
     # Intialize the library (must be called once before other functions).
     strip.begin()
     strip_reset()
-    strip.setPixelColor(1, Color(255, 0, 0))
-    strip.show()
-    # main loop
+
     while True:
         try:
-            strip_reset()
             # read data from audio input
             _, data = audio_in.read()
             # convert data to aubio float samples
             samples = np.fromstring(data, dtype=float_type)
-
+            
             led_out_bg = LedOutTask(samples)
-            led_out_bg.daemon = True
             led_out_bg.start()
 
             audio_out.write(data)
+
         except KeyboardInterrupt:
             print("Ctrl+C pressed, exiting")
-            brea
+            break
