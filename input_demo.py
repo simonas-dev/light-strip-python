@@ -6,6 +6,7 @@ from aubio import source, pvoc, specdesc, float_type, pitch, filterbank
 from neopixel import *
 import math
 import threading
+import datetime
 
 A4 = 440
 C0 = A4*np.power(2, -4.75)
@@ -134,6 +135,8 @@ param_fade = 0.05 # 5% black every tick.
 
 def send_to_leds(_samples):
     if len(_samples) > 0:
+        a = datetime.datetime.now()
+        
         fftgrain = pv(_samples)
         new_energies = f(fftgrain)
         pitch_val = get_pitch(_samples)
@@ -160,8 +163,11 @@ def send_to_leds(_samples):
             color_mix = mix_colors(cur_color, note_color, energy)
             black_mix = mix_colors(color_mix, 0, param_fade)
             strip.setPixelColor(index, black_mix)
-
+    
         strip.show()
+        b = datetime.datetime.now()
+        print(b - a)
+
 
 class LedOutTask(threading.Thread):
     def __init__(self, samples):
